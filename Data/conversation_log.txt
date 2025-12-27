@@ -1,0 +1,36 @@
+👤 You: hello
+🤖 Yuna: You said: hello
+
+👤 You: Malli house
+🤖 Yuna: You said: Malli house
+
+👤 You: virus
+🤖 Yuna: You said: virus
+
+👤 You: I am Jaswant ka
+🤖 Yuna: You said: I am Jaswant ka
+
+👤 You: Play special
+🤖 Yuna: You said: Play special
+
+👤 You: parenchyma
+🤖 Yuna: You said: parenchyma
+
+👤 You: good bye
+🤖 Tron: You said: good bye
+
+👤 You: did you hear me
+🤖 Tron: You said: did you hear me
+
+👤 You: easy control
+🤖 Tron: You said: easy control
+
+👤 You: 'voice'
+🤖 Tron: You said: 'voice'
+
+👤 You: say
+🤖 Tron: You said: say
+
+👤 You: 2 + 4 + 4 x
+🤖 Tron: You said: 2 + 4 + 4 x
+

@@ -1,0 +1,12 @@
+# Root dependencies
+node_modules/
+
+# Python
+__pycache__/
+
+# IDE
+.idea/
+
+# Env files
+.env
+.env.local
