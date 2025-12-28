@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-dotenv
+edge-tts
+langdetect
+pydantic
+speechrecognition
+pygame
+asyncio
