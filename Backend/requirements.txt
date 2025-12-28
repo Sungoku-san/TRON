@@ -1,9 +1,0 @@
-fastapi
-uvicorn
-python-dotenv
-edge-tts
-langdetect
-pydantic
-speechrecognition  # for SpeechRecognition
-pygame            # for TTS playback
-asyncio           # usually already included, but safe to add
