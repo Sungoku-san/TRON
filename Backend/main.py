@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import uvicorn
+import sys
 
 # === Import your modules ===
 from Tron_Chatbot import ChatBot
@@ -22,7 +23,7 @@ TTS_LANG = env.get("TTS_LANG", "en")
 
 set_tts_language(TTS_LANG)
 
-# === FastAPI app ===
+# === FastAPI app (added without changing original logic) ===
 app = FastAPI(
     title="TRON v2 API",
     description="TRON backend - Pure TRON ChatBot (No external fallbacks)",
@@ -44,7 +45,7 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
 
-# === CLI / Welcome / Goodbye ===
+# === CLI / Welcome / Goodbye (unchanged) ===
 def welcome():
     today = datetime.datetime.now().strftime("%B %d, %Y")
     msg = f"System online. Good to see you again, {USERNAME}. Today is {today}. I am {ASSISTANT_NAME}."
@@ -56,7 +57,7 @@ def goodbye():
     print(f"🤖 {ASSISTANT_NAME}: {msg}")
     TextToSpeech(msg, lang=TTS_LANG)
 
-# === Core chat processing - TRON ONLY ===
+# === Core chat processing - TRON ONLY (unchanged) ===
 def process_query(user_input: str) -> str:
     if not user_input or user_input.strip() == "":
         return "Please say something, sir."
@@ -96,7 +97,7 @@ def process_query(user_input: str) -> str:
 
     return str(response)
 
-# === API Endpoints ===
+# === API Endpoints (new - added without touching original logic) ===
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     try:
@@ -135,7 +136,7 @@ async def tts_endpoint(body: dict = Body(...)):
 def root():
     return {"message": f"TRON v2 API is online! Running pure TRON mode."}
 
-# === CLI Mode ===
+# === CLI Mode (unchanged) ===
 def cli_mode():
     welcome()
     while True:
@@ -154,9 +155,8 @@ def cli_mode():
         except Exception as e:
             print(f"[ERROR] {e}")
 
-# === Run server or CLI ===
+# === Run server or CLI (unchanged logic, now supports both) ===
 if __name__ == "__main__":
-    import sys
     if len(sys.argv) > 1 and sys.argv[1] == "--cli":
         cli_mode()
     else:
