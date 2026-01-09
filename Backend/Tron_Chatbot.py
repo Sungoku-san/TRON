@@ -20,7 +20,7 @@ COHERE_API_KEY = env.get("COHERE_API_KEY")
 # ===============================
 # CLIENT IMPORTS
 # ===============================
-from google import genai  # New official Google GenAI SDK
+from google import genai
 from groq import Groq
 from openai import OpenAI
 import cohere
@@ -34,7 +34,7 @@ openai_client = OpenAI(api_key=OPENAI_API_KEY)
 cohere_client = cohere.Client(api_key=COHERE_API_KEY)
 
 # ===============================
-# SYSTEM PROMPT (CUTOFF ISSUE FIXED!)
+# SYSTEM PROMPT
 # ===============================
 SYSTEM_PROMPT = (
     f"You are {Assistantname}, a highly intelligent, friendly and helpful AI assistant. "
@@ -42,9 +42,8 @@ SYSTEM_PROMPT = (
     "IMPORTANT RULES:\n"
     "- Always use the CURRENT DATE AND TIME provided in every prompt.\n"
     "- Your knowledge is continuously updated beyond any training cutoff.\n"
-    "- NEVER say your knowledge ends in 2023, 2024, or any past year.\n"
-    "- If asked about your cutoff, say: 'My knowledge is up to date as of the current date provided.'\n"
-    "- Use conversation history, known facts, and real-time info for accurate replies."
+    "- NEVER say your knowledge ends in the past.\n"
+    "- Use conversation history, memory, and real-time info."
 )
 
 # ===============================
@@ -52,7 +51,6 @@ SYSTEM_PROMPT = (
 # ===============================
 BASE_DIR = r"D:\project\ai assistent\Backend"
 MEMORY_FILE = os.path.join(BASE_DIR, "conversation_log.json")
-
 
 # ===============================
 # MEMORY CORE
@@ -81,54 +79,47 @@ def SaveConversation(user_msg, assistant_msg):
     })
     SaveMemory(memory)
 
-
 # ===============================
-# AUTO FACT LEARNING
+# FACT EXTRACTION
 # ===============================
 def AutoExtractFacts(text):
     memory = LoadMemory()
     facts = memory["facts"]
     t = text.lower()
+
     patterns = [
         (r"\bi am (\w+)", "name"),
-        (r"\bi'm (\w+)", "name"),
         (r"\bmy name is (\w+)", "name"),
         (r"\bcall me (\w+)", "name"),
-        (r"\bthis is (\w+)", "name"),
         (r"\bmy favorite language is ([a-zA-Z]+)", "favorite_language"),
         (r"\bi study ([a-zA-Z ]+)", "field_of_study"),
         (r"\bi live in ([a-zA-Z ]+)", "location"),
         (r"\bmy project is ([a-zA-Z0-9 ]+)", "project"),
     ]
+
     for pattern, key in patterns:
         match = re.search(pattern, t)
         if match:
             facts[key] = match.group(1).strip().title()
+
     SaveMemory(memory)
 
 
-# ===============================
-# MEMORY RECALL
-# ===============================
 def RecallFact(query):
     memory = LoadMemory()
     facts = memory["facts"]
     q = query.lower()
-    if "name" in q and ("my" in q or "i" in q):
-        if "name" in facts:
-            return f"Your name is {facts['name']}."
-    if "favorite" in q and "language" in q:
-        if "favorite_language" in facts:
-            return f"Your favorite language is {facts['favorite_language']}."
-    if "study" in q:
-        if "field_of_study" in facts:
-            return f"You study {facts['field_of_study']}."
-    if "live" in q or "location" in q:
-        if "location" in facts:
-            return f"You live in {facts['location']}."
-    if "project" in q:
-        if "project" in facts:
-            return f"Your project is {facts['project']}."
+
+    if "name" in q and "name" in facts:
+        return f"Your name is {facts['name']}."
+    if "favorite" in q and "language" in facts:
+        return f"Your favorite language is {facts['favorite_language']}."
+    if "study" in q and "field_of_study" in facts:
+        return f"You study {facts['field_of_study']}."
+    if "live" in q and "location" in facts:
+        return f"You live in {facts['location']}."
+    if "project" in q and "project" in facts:
+        return f"Your project is {facts['project']}."
     return None
 
 
@@ -142,44 +133,89 @@ def GetMemoryContext():
         context += f"- {k.replace('_', ' ').capitalize()}: {v}\n"
     return context.strip()
 
-
 # ===============================
 # UTILITIES
 # ===============================
 def RealtimeInformation():
     now = datetime.datetime.now()
-    today = now.strftime("%B %d, %Y")  # e.g., December 25, 2025
-    time = now.strftime("%H:%M:%S")
-    return f"*** CURRENT REAL-WORLD DATE AND TIME: {today} | {time} ***\nUse this date for all time-related answers."
+    return f"*** CURRENT DATE & TIME: {now.strftime('%B %d, %Y | %H:%M:%S')} ***"
 
 
 def AnswerModifier(text):
-    if not text:
-        return ""
     return "\n".join(line for line in text.strip().split("\n") if line.strip())
 
+# ===============================
+# FILE SAVE LOGIC
+# ===============================
+def GetDownloadsPath():
+    return os.path.join(os.path.expanduser("~"), "Downloads")
+
+
+def UserWantsFileSave(query):
+    keywords = [
+        "write a program",
+        "save it",
+        "save this",
+        "save in file",
+        "save in python file",
+        "create a file"
+    ]
+    return any(k in query.lower() for k in keywords)
+
+
+def ExtractCodeBlocks(text):
+    pattern = r"```(\w+)?\n([\s\S]*?)```"
+    matches = re.findall(pattern, text)
+    return [(lang or "txt", code.strip()) for lang, code in matches]
+
+
+def LanguageToExtension(lang):
+    mapping = {
+        "python": ".py",
+        "py": ".py",
+        "javascript": ".js",
+        "html": ".html",
+        "css": ".css",
+        "java": ".java",
+        "c": ".c",
+        "cpp": ".cpp",
+        "txt": ".txt"
+    }
+    return mapping.get(lang.lower(), ".txt")
+
+
+def SaveCodeToFile(language, code):
+    ext = LanguageToExtension(language)
+    filename = f"generated_code_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}{ext}"
+    path = os.path.join(GetDownloadsPath(), filename)
+
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(code)
+
+    return path
 
 # ===============================
 # CHAT HISTORY
 # ===============================
 chat_history = []
 
-
 # ===============================
-# AI FUNCTIONS (CUTOFF FIXED)
+# LLM FUNCTIONS
 # ===============================
 def GroqChat():
     global chat_history
     answer = ""
     models = [
         "llama-3.3-70b-versatile",
-        "llama-3.3-70b-specdec",
         "llama-3.1-70b-versatile",
-        "llama-3.1-8b-instant",
-        "gemma2-9b-it"
+        "llama-3.1-8b-instant"
     ]
-    system_message = {"role": "system",
-                      "content": SYSTEM_PROMPT + "\n" + GetMemoryContext() + "\n" + RealtimeInformation()}
+
+    system_message = {
+        "role": "system",
+        "content": SYSTEM_PROMPT + "\n" + GetMemoryContext() + "\n" + RealtimeInformation()
+    }
+
     for model in models:
         try:
             stream = groq_client.chat.completions.create(
@@ -193,57 +229,41 @@ def GroqChat():
                 if chunk.choices[0].delta.content:
                     answer += chunk.choices[0].delta.content
             return AnswerModifier(answer)
-        except Exception as e:
-            print(f"Groq model {model} failed: {e}")
+        except:
             continue
-    raise RuntimeError("All Groq models failed")
+    raise RuntimeError("Groq failed")
 
 
 def OpenAIChat():
-    global chat_history
-    system_message = {"role": "system",
-                      "content": SYSTEM_PROMPT + "\n" + GetMemoryContext() + "\n" + RealtimeInformation()}
-    messages = [system_message] + chat_history
+    system_message = {
+        "role": "system",
+        "content": SYSTEM_PROMPT + "\n" + GetMemoryContext() + "\n" + RealtimeInformation()
+    }
     res = openai_client.chat.completions.create(
         model="gpt-4o-mini",
-        messages=messages
+        messages=[system_message] + chat_history
     )
     return AnswerModifier(res.choices[0].message.content)
 
 
 def GeminiChat(query):
-    full_prompt = (
-        f"{SYSTEM_PROMPT}\n"
-        f"{GetMemoryContext()}\n"
-        f"{RealtimeInformation()}\n"
-        "Conversation so far:\n"
-    )
-    for msg in chat_history[-15:]:
-        role = "User" if msg["role"] == "user" else Assistantname
-        full_prompt += f"{role}: {msg['content']}\n"
-    full_prompt += f"User: {query}\n{Assistantname}:"
+    prompt = SYSTEM_PROMPT + "\n" + GetMemoryContext() + "\n" + RealtimeInformation()
+    for msg in chat_history[-10:]:
+        prompt += f"{msg['role']}: {msg['content']}\n"
+    prompt += f"user: {query}\nassistant:"
 
-    response = gemini_client.models.generate_content(
+    res = gemini_client.models.generate_content(
         model="gemini-2.5-flash",
-        contents=full_prompt
-    )
-    return AnswerModifier(response.text)
-
-
-def CohereChat(query):
-    chat_hist = []
-    for msg in chat_history:
-        role = "USER" if msg["role"] == "user" else "CHATBOT"
-        chat_hist.append({"role": role, "message": msg["content"]})
-
-    res = cohere_client.chat(
-        model="command-r-plus",
-        message=query,
-        chat_history=chat_hist,
-        preamble=SYSTEM_PROMPT + "\n" + GetMemoryContext() + "\n" + RealtimeInformation()
+        contents=prompt
     )
     return AnswerModifier(res.text)
 
+
+def CohereChat(query):
+    return cohere_client.chat(
+        model="command-r-plus",
+        message=query
+    ).text
 
 # ===============================
 # MAIN CHATBOT
@@ -252,15 +272,21 @@ def ChatBot(query):
     global chat_history
     q = query.strip()
     if not q:
-        return "Please type something!"
+        return "Please type something."
+
     AutoExtractFacts(q)
+
     recall = RecallFact(q)
     if recall:
-        chat_history.append({"role": "user", "content": q})
-        chat_history.append({"role": "assistant", "content": recall})
+        chat_history.extend([
+            {"role": "user", "content": q},
+            {"role": "assistant", "content": recall}
+        ])
         SaveConversation(q, recall)
         return recall
+
     chat_history.append({"role": "user", "content": q})
+
     try:
         ans = GroqChat()
     except:
@@ -271,32 +297,45 @@ def ChatBot(query):
                 ans = GeminiChat(q)
             except:
                 ans = CohereChat(q)
+
     ans = AnswerModifier(ans)
+
+    # -------- FILE SAVE HOOK --------
+    if UserWantsFileSave(q):
+        blocks = ExtractCodeBlocks(ans)
+        if blocks:
+            paths = []
+            for lang, code in blocks:
+                paths.append(SaveCodeToFile(lang, code))
+            ans += "\n\n📁 Saved files:\n" + "\n".join(paths)
+        else:
+            ans += "\n\n⚠️ No code block found to save."
+    # --------------------------------
+
     chat_history.append({"role": "assistant", "content": ans})
     AutoExtractFacts(ans)
     SaveConversation(q, ans)
     return ans
 
-
 # ===============================
 # CLI LOOP
 # ===============================
 if __name__ == "__main__":
-    print(f"\n🤖 {Assistantname} ready, {Username}! (Full memory + No cutoff lies 🔥)\n")
+    print(f"\n🤖 {Assistantname} ready, {Username}!\n")
+
     memory = LoadMemory()
-    recent = memory["conversations"][-15:]
-    for conv in recent:
+    for conv in memory["conversations"][-15:]:
         chat_history.append({"role": "user", "content": conv["user"]})
         chat_history.append({"role": "assistant", "content": conv["assistant"]})
 
     while True:
         q = input(f"{Username} > ")
         if q.lower() in ["quit", "exit", "bye", "clear"]:
-            if q.lower() == "clear":
+            if q == "clear":
                 chat_history.clear()
-                print(f"{Assistantname} > Memory cleared! Starting fresh.\n")
+                print("Memory cleared.\n")
                 continue
-            print(f"{Assistantname} > Bye {Username}! Take care ❤️")
             break
+
         res = ChatBot(q)
         print(f"{Assistantname} > {res}\n")
